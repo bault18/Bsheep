@@ -3,7 +3,12 @@
 #include <cmath>
 #include <iomanip>
 #include <algorithm>
+
+
+
 using namespace std;
+
+
 
 class point {
 public:
@@ -16,20 +21,49 @@ public:
 		y = b;
 		num = n;
 	}
-
-	bool operator == (point a)
-	{
-		if (a.x == x && a.y == y)
-			return true;
-		return false;
-	}
 };
 
+/*
+bool operator == (point p1, point p2)
+{
+	return (p1.y == p2.y) && (p1.x == p2.x);
+}*/
+
+//used to sort points
+//chooses lowest y, then lowest x, then lowest input point
+bool srt(point p1, point p2)
+{
+	//see which has greater y coord
+	if (p1.y < p2.y)
+		return true;
+	if (p1.y > p2.y)
+		return true;
+	//see which has greater x coord
+	if (p1.x < p2.x)
+		return true;
+	if (p1.x > p2.x)
+		return false;
+	//see which has lesser id
+	if (p1.num < p2.num)
+		return true;
+	if (p1.num > p2.num)
+		return false;
+	return false;
+}
+
+//checks if there are dupicate points in the input
+bool unique_pts(point p1, point p2)
+{
+	if (p1.x == p2.x && p1.y == p2.y)
+		return true;
+	return false;
+}
 
 vector<point> upper_hull(point p1, point p2, vector<point> points)
 {
 	point maxpt;
 	double h = 0;
+	vector<point> newpts;
 	for (int i = 0; i < points.size(); i++)
 	{
 		point p3 = points.at(i);
@@ -40,6 +74,8 @@ vector<point> upper_hull(point p1, point p2, vector<point> points)
 			maxpt = p3;
 			h = currh;
 		}
+		if (currh > 0)
+			newpts.push_back(p3);
 	}
 	
 	//end case
@@ -53,9 +89,9 @@ vector<point> upper_hull(point p1, point p2, vector<point> points)
 	}
 
 	//left half
-	vector<point> left_half = upper_hull(p1, maxpt, points);
+	vector<point> left_half = upper_hull(p1, maxpt, newpts);
 	//right half
-	vector<point> right_half = upper_hull(maxpt, p2, points);
+	vector<point> right_half = upper_hull(maxpt, p2, newpts);
 
 	//add items into hull
 	for (int i = 0; i < left_half.size(); i++)
@@ -70,7 +106,7 @@ vector<point> lower_hull(point p1, point p2, vector<point> points)
 {
 	point maxpt;
 	double h = 0;
-	int loc;
+	vector<point> newpts;
 	for (int i = 0; i < points.size(); i++)
 	{
 		point p3 = points.at(i);
@@ -81,8 +117,9 @@ vector<point> lower_hull(point p1, point p2, vector<point> points)
 		{
 			maxpt = p3;
 			h = currh;
-			loc = i;
 		}
+		if (currh < 0)
+			newpts.push_back(p3);
 	}
 
 	if (h >= 0)
@@ -92,12 +129,10 @@ vector<point> lower_hull(point p1, point p2, vector<point> points)
 		return fin;
 	}
 
-	points.erase(points.begin() + loc);
-
 	//left half
-	vector<point> left_half = lower_hull(p1, maxpt, points);
+	vector<point> left_half = lower_hull(p1, maxpt, newpts);
 	//right half
-	vector<point> right_half = lower_hull(maxpt, p2, points);
+	vector<point> right_half = lower_hull(maxpt, p2, newpts);
 
 	//create the whole hull
 	for (int i = 0; i < right_half.size(); i++)
@@ -123,6 +158,7 @@ int main()
 		cin >> num_input;
 
 		vector<point> points;
+		//Read in points
 		for (int j = 0; j < num_input; j++)
 		{
 			int x, y;
@@ -132,6 +168,8 @@ int main()
 			
 		}
 
+
+		//edge cases
 		if (num_input == 0)
 		{
 			cout << "0.00" << endl << endl;
@@ -144,44 +182,20 @@ int main()
 			continue;
 		}
 
+		//sort points
+		sort(points.begin(), points.end(), srt);
 
-		//Remove duplicates (THIS IS BAD)
-		for (int j = 0; j < points.size(); j++)
-		{
-			for (int k = j + 1; k < points.size(); k++)
-			{
-				if (points[j] == points[k])
-				{
-					points.erase(points.begin() + k);
-					k--;
-				}
-			}
-		}
+		//Remove dupicates
+		vector<point>::iterator it;
+		it = unique(points.begin(), points.end(), unique_pts);
+
+		points.resize(distance(points.begin(), it));
 		
 
 		//~~~~~~~~~~~Finding Edge Points~~~~~~~~~~~
 
-		point left_most(10000000, 1000000, 0);
-		point right_most(-10000000, 0, 0);
-
-		//Find left and rightmost points
-		for (int i = 0; i < points.size(); i++)
-		{
-			point temp = points[i];
-
-			//Finds rightmost item
-			if (temp.x > right_most.x)
-				right_most = temp;
-			//Finds highest rightmost item
-			else if (temp.x == right_most.x && temp.y > right_most.y)
-				right_most = temp;
-			//Finds lowest item
-			if (temp.y < left_most.y)
-				left_most = temp;
-			//Finds leftmost lowest item
-			else if (temp.y == left_most.y && temp.x < left_most.x)
-				left_most = temp;
-		}
+		point left_most = points.front();
+		point right_most = points.back();
 
 		//~~~~~~~~~~Run Quickhull~~~~~~~~~~
 
@@ -204,7 +218,7 @@ int main()
 		for (int i = 0; i < completehull.size() - 2; i++)
 		{
 			for (int j = i + 1; j < completehull.size() - 1; j++)
-				if (completehull[i] == completehull[j])
+				if (unique_pts(completehull[i],completehull[j]))
 					completehull.erase(completehull.begin() + j);
 		}
 
